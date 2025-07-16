@@ -15,7 +15,7 @@ planet_orbit_radius = st.slider("행성 공전 궤도 반경 (렌즈 기준)", 1
 planet_orbit_speed_ratio = st.slider("행성 공전 속도 비율 (렌즈 대비)", 1.1, 10.0, 3.0, 0.1)  # 렌즈 공전 속도보다 빠르게
 
 # 공전 속도 조절 (각도 증가량) - 작게 해서 부드럽게
-orbit_speed = st.slider("렌즈 공전 속도 (각도 증가량)", 0.1, 5.0, 0.5, step=0.1)
+orbit_speed = st.slider("렌즈 공전 속도 (각도 증가량)", 0.1, 30.0, 0.5, step=0.1)
 
 # 광원 위치 (원점)
 source_x, source_y = 0, 0
