@@ -3,15 +3,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="중력 렌즈 시뮬레이터", layout="centered")
-st.title("🔭 중력 렌즈 효과 시뮬레이터 (광원 뒤, 관측자 고정)")
+st.title("🔭 중력 렌즈 효과 시뮬레이터 (광원 고정, 렌즈 이동)")
 
 # 렌즈 위치 범위
 lens_positions = np.arange(-50, 51)
 planet_offset = 5
 
 # 고정 위치
-observer_x = 0
-source_x = -30  # 광원을 렌즈 뒤(왼쪽)로 고정
+source_x = -30  # 광원 고정 (렌즈 뒤쪽)
+observer_x = 0  # 관측자 고정
 
 # 사용자 입력
 has_planet = st.checkbox("렌즈에 행성 포함", value=False)
@@ -40,11 +40,11 @@ for lens_x in lens_positions:
 fig1, ax1 = plt.subplots(figsize=(6, 2))
 ax1.set_xlim(-50, 50)
 ax1.set_ylim(-2, 2)
-ax1.set_title("위치도: 렌즈, 행성, 광원(뒤쪽), 관측자(고정)")
+ax1.set_title("위치도: 렌즈, 행성, 광원(고정), 관측자(고정)")
 ax1.get_yaxis().set_visible(False)
 
 # 광원 위치
-ax1.plot(source_x, 1, 'yellow', marker='*', markersize=18, label="광원 (뒤쪽)")
+ax1.plot(source_x, 1, 'yellow', marker='*', markersize=18, label="광원 (고정)")
 
 # 관측자 위치
 ax1.plot(observer_x, -1, 'green', marker='^', markersize=12, label="관측자 (고정)")
@@ -52,7 +52,7 @@ ax1.plot(observer_x, -1, 'green', marker='^', markersize=12, label="관측자 (�
 # 렌즈 궤도 (x축 선)
 ax1.hlines(0, -50, 50, colors='gray', linestyles='dashed')
 
-# 현재 렌즈 위치 (0으로 표시)
+# 현재 렌즈 위치 (중앙 0)
 current_lens_x = 0
 ax1.plot(current_lens_x, 0, 'black', marker='o', markersize=12, label="렌즈")
 
