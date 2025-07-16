@@ -47,7 +47,7 @@ def compute_brightness(observer_x, observer_y, source_x, source_y, lens_x, lens_
     obs_to_lens = vector(observer_x, observer_y, lens_x, lens_y)
     cos_theta = np.dot(obs_to_src, obs_to_lens) / (np.linalg.norm(obs_to_src)*np.linalg.norm(obs_to_lens) + 1e-9)
 
-    abx, aby = obs_to_src  # 꼭 추가
+    abx, aby = obs_to_src  # 여기가 빠지면 오류 발생
 
     if cos_theta > 0 and np.linalg.norm(obs_to_lens) < np.linalg.norm(obs_to_src):
         ab_len2 = abx*abx + aby*aby
