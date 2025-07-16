@@ -14,8 +14,8 @@ planet_radius = st.slider("행성 렌즈 효과 반지름", 1.0, 10.0, 3.0, step
 planet_orbit_radius = st.slider("행성 공전 궤도 반경 (렌즈 기준)", 1, 20, 5)
 planet_orbit_speed_ratio = st.slider("행성 공전 속도 비율 (렌즈 대비)", 1.1, 10.0, 3.0, 0.1)  # 렌즈 공전 속도보다 빠르게
 
-# 공전 속도 조절 (각도 증가량)
-orbit_speed = st.slider("렌즈 공전 속도 (각도 증가량)", 1, 20, 3, step=1)
+# 공전 속도 조절 (각도 증가량) - 작게 해서 부드럽게
+orbit_speed = st.slider("렌즈 공전 속도 (각도 증가량)", 0.1, 5.0, 0.5, step=0.1)
 
 # 광원 위치 (원점)
 source_x, source_y = 0, 0
@@ -100,7 +100,7 @@ while auto_run:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14,6))
 
         # 위치도
-        ax1.set_title(f"렌즈와 행성 공전 궤도 및 위치 (t={angle_deg}도)")
+        ax1.set_title(f"렌즈와 행성 공전 궤도 및 위치 (t={angle_deg:.1f}도)")
         ax1.set_xlim(-orbit_radius - planet_orbit_radius - 30, orbit_radius + planet_orbit_radius + 30)
         ax1.set_ylim(-orbit_radius - planet_orbit_radius - 40, orbit_radius + planet_orbit_radius + 30)
         ax1.set_aspect('equal')
@@ -148,5 +148,5 @@ while auto_run:
         st.pyplot(fig)
         st.write(f"현재 밝기: {brightness:.5f}")
 
-    angle_deg = (angle_deg + orbit_speed) % 360  # 각도 증가량 조절
-    time.sleep(0.2)
+    angle_deg = (angle_deg + orbit_speed) % 360  # 각도 증가량 조절 (작게 해서 부드럽게)
+    time.sleep(0.05)  # 0.05초 대기 (더 빠르고 부드럽게)
