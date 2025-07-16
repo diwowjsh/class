@@ -141,7 +141,7 @@ while auto_run:
         ax2.axvline(angle_deg, color='red', linestyle='--', label="현재 각도")
         ax2.set_xlabel("렌즈 각도 (도)")
         ax2.set_ylabel("측정 밝기")
-        ax2.set_title("렌즈 각도에 따른 밝기 변화 (광원 반대편 밝기 없음)")
+        ax2.set_title("렌즈 각도에 따른 밝기 변화")
         ax2.legend()
         ax2.grid(True)
 
