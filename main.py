@@ -3,14 +3,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-st.set_page_config(page_title="중력 렌즈 시뮬레이터 (자동 공전)", layout="wide")
-st.title("🔭 중력 렌즈 효과 시뮬레이터 (자동 공전 모드)")
+st.set_page_config(page_title="중력 렌즈 시뮬레이터 (자동 공전 + 행성)", layout="wide")
+st.title("🔭 중력 렌즈 효과 시뮬레이터 (자동 공전 및 행성 포함)")
 
 # 사용자 입력
 has_planet = st.checkbox("렌즈에 행성 포함", value=False)
 lens_radius = st.slider("항성 렌즈 효과 반지름", 1.0, 10.0, 3.0, step=0.5)
 planet_radius = st.slider("행성 렌즈 효과 반지름", 1.0, 10.0, 3.0, step=0.5)
-planet_orbit_offset = 5  # 행성은 렌즈 기준 x축 방향으로 +5 떨어짐
+planet_orbit_offset = st.slider("행성 위치 (렌즈 기준 x축 오프셋)", 1, 20, 5)
 
 # 광원 위치 (원점)
 source_x, source_y = 0, 0
@@ -80,8 +80,9 @@ while auto_run:
         lens_y = orbit_radius * np.sin(t)
 
         if has_planet:
-            planet_x = lens_x + planet_orbit_offset
-            planet_y = lens_y
+            # 행성은 렌즈 기준 x축 방향으로 행성 오프셋만큼 떨어져 있고, 렌즈와 동일한 각도로 공전
+            planet_x = lens_x + planet_orbit_offset * np.cos(t)
+            planet_y = lens_y + planet_orbit_offset * np.sin(t)
         else:
             planet_x = None
             planet_y = None
@@ -92,12 +93,18 @@ while auto_run:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14,6))
 
         # 위치도
-        ax1.set_title(f"렌즈 공전 궤도 및 위치 (t={angle_deg}도)")
-        ax1.set_xlim(-orbit_radius-30, orbit_radius+30)
-        ax1.set_ylim(-orbit_radius-40, orbit_radius+30)
+        ax1.set_title(f"렌즈 및 행성 공전 궤도 및 위치 (t={angle_deg}도)")
+        ax1.set_xlim(-orbit_radius - planet_orbit_offset - 30, orbit_radius + planet_orbit_offset + 30)
+        ax1.set_ylim(-orbit_radius - planet_orbit_offset - 40, orbit_radius + planet_orbit_offset + 30)
         ax1.set_aspect('equal')
-        circle = plt.Circle((0,0), orbit_radius, color='gray', linestyle='dotted', fill=False)
+        # 렌즈 공전 궤도
+        circle = plt.Circle((0, 0), orbit_radius, color='gray', linestyle='dotted', fill=False)
         ax1.add_artist(circle)
+        # 행성 공전 궤도 (렌즈 기준, 렌즈 궤도 내에서 행성 움직임 궤도)
+        if has_planet:
+            inner_circle = plt.Circle((0, 0), orbit_radius + planet_orbit_offset, color='gray', linestyle='dashdot', fill=False)
+            ax1.add_artist(inner_circle)
+
         ax1.plot(source_x, source_y, 'yellow', marker='*', markersize=20, label="광원 (고정)")
         ax1.plot(lens_x, lens_y, 'black', marker='o', markersize=14, label="렌즈")
         if has_planet:
@@ -107,13 +114,17 @@ while auto_run:
         ax1.grid(True)
 
         # 밝기 곡선
-        angles = np.linspace(0, 2*np.pi, 360)
+        angles = np.linspace(0, 2 * np.pi, 360)
         brightness_vals = []
         for angle in angles:
             lx = orbit_radius * np.cos(angle)
             ly = orbit_radius * np.sin(angle)
-            px = lx + planet_orbit_offset if has_planet else None
-            py = ly if has_planet else None
+            if has_planet:
+                px = lx + planet_orbit_offset * np.cos(angle)
+                py = ly + planet_orbit_offset * np.sin(angle)
+            else:
+                px = None
+                py = None
             b = compute_brightness(observer_x, observer_y, source_x, source_y, lx, ly, px, py, lens_radius, planet_radius)
             brightness_vals.append(b)
 
@@ -128,6 +139,5 @@ while auto_run:
         st.pyplot(fig)
         st.write(f"현재 밝기: {brightness:.5f}")
 
-    angle_deg = (angle_deg + 3) % 360  # 각도 3도씩 증가
-    time.sleep(0.2)  # 0.2초 대기 후 다시 반복
-    # Streamlit rerun 방지용, 자동 종료하려면 체크박스 해제해야 함
+    angle_deg = (angle_deg + 3) % 360
+    time.sleep(0.2)
