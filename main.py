@@ -2,8 +2,8 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="중력 렌즈 시뮬레이터 (관측자 시선 반영)", layout="centered")
-st.title("🔭 중력 렌즈 효과 시뮬레이터 (관측자-광원-렌즈 관계 반영)")
+st.set_page_config(page_title="중력 렌즈 시뮬레이터 (광원 반대편 밝기 차단)", layout="centered")
+st.title("🔭 중력 렌즈 효과 시뮬레이터 (관측자-광원-렌즈 위치 조건 반영)")
 
 # 사용자 입력
 has_planet = st.checkbox("렌즈에 행성 포함", value=False)
@@ -38,49 +38,61 @@ else:
 def distance(x1, y1, x2, y2):
     return np.sqrt((x1 - x2)**2 + (y1 - y2)**2)
 
-def project_point_on_line(px, py, ax, ay, bx, by):
-    """점(px, py)를 선분 AB(ax,ay)-(bx,by)에 수직으로 투영한 점 좌표 구하기"""
-    apx = px - ax
-    apy = py - ay
-    abx = bx - ax
-    aby = by - ay
-    ab_len2 = abx*abx + aby*aby
-    dot = apx*abx + apy*aby
-    t = dot / ab_len2
-    proj_x = ax + abx*t
-    proj_y = ay + aby*t
-    return proj_x, proj_y, t
+def vector(a_x, a_y, b_x, b_y):
+    return np.array([b_x - a_x, b_y - a_y])
 
 def compute_brightness(observer_x, observer_y, source_x, source_y, lens_x, lens_y,
                        planet_x=None, planet_y=None, lens_r=3.0, planet_r=3.0):
     """
     관측자-광원 직선과 렌즈 위치 관계를 사용해 밝기 계산
-    1. 관측자-광원 직선에 렌즈 위치를 투영하여 중심선에서 얼마나 떨어져 있는지 계산 (impact parameter)
-    2. 이 거리가 작을수록 중력렌즈 증폭 효과 크다고 가정
-    3. 행성도 동일하게 적용
+    렌즈가 관측자와 광원 사이에 있을 때만 중력 렌즈 효과 발생
     """
-    # 관측자-광원 직선 기준 투영 및 거리
-    proj_x, proj_y, t_param = project_point_on_line(lens_x, lens_y, observer_x, observer_y, source_x, source_y)
-    impact_dist = distance(lens_x, lens_y, proj_x, proj_y)
-    
-    # 증폭 함수: 거리 가까울수록 크게, 거리 멀면 거의 영향 없음
-    lens_amp = 1 + 0.8 * np.exp(- (impact_dist / lens_r) ** 2)
-    
+    # 관측자 -> 광원 벡터
+    obs_to_src = vector(observer_x, observer_y, source_x, source_y)
+    # 관측자 -> 렌즈 벡터
+    obs_to_lens = vector(observer_x, observer_y, lens_x, lens_y)
+
+    # 두 벡터가 같은 방향인지 (코사인값)
+    cos_theta = np.dot(obs_to_src, obs_to_lens) / (np.linalg.norm(obs_to_src)*np.linalg.norm(obs_to_lens) + 1e-9)
+
+    # 관측자와 광원 사이에 렌즈가 있을 때만 밝기 계산
+    if cos_theta > 0 and np.linalg.norm(obs_to_lens) < np.linalg.norm(obs_to_src):
+        # 렌즈의 광원-관측자 직선 투영 및 거리 계산
+        # 관측자-광원 직선에 렌즈를 투영
+        abx, aby = obs_to_src
+        ab_len2 = abx*abx + aby*aby
+        apx, apy = lens_x - observer_x, lens_y - observer_y
+        dot = apx*abx + apy*aby
+        t_param = dot / ab_len2
+        proj_x = observer_x + abx * t_param
+        proj_y = observer_y + aby * t_param
+        impact_dist = distance(lens_x, lens_y, proj_x, proj_y)
+
+        lens_amp = 1 + 0.8 * np.exp(- (impact_dist / lens_r) ** 2)
+    else:
+        lens_amp = 1  # 렌즈가 광원 반대편이면 증폭 없음
+
     amp = lens_amp
-    
-    # 행성도 동일하게
+
+    # 행성도 동일 조건으로 처리
     if planet_x is not None and planet_y is not None:
-        proj_x_p, proj_y_p, t_param_p = project_point_on_line(planet_x, planet_y, observer_x, observer_y, source_x, source_y)
-        impact_dist_p = distance(planet_x, planet_y, proj_x_p, proj_y_p)
-        planet_amp = 0.3 * np.exp(- (impact_dist_p / planet_r) ** 2)
+        obs_to_planet = vector(observer_x, observer_y, planet_x, planet_y)
+        cos_theta_p = np.dot(obs_to_src, obs_to_planet) / (np.linalg.norm(obs_to_src)*np.linalg.norm(obs_to_planet) + 1e-9)
+
+        if cos_theta_p > 0 and np.linalg.norm(obs_to_planet) < np.linalg.norm(obs_to_src):
+            dot_p = (planet_x - observer_x)*abx + (planet_y - observer_y)*aby
+            t_param_p = dot_p / ab_len2
+            proj_x_p = observer_x + abx * t_param_p
+            proj_y_p = observer_y + aby * t_param_p
+            impact_dist_p = distance(planet_x, planet_y, proj_x_p, proj_y_p)
+            planet_amp = 0.3 * np.exp(- (impact_dist_p / planet_r) ** 2)
+        else:
+            planet_amp = 0
         amp += planet_amp
-    
-    # 광원과 관측자 사이 거리 보정 (간단히 1/d^2)
+
+    # 광원-관측자 거리로 기본 감쇠 계산
     dist_obs_src = distance(observer_x, observer_y, source_x, source_y)
-    
-    brightness = amp / (dist_obs_src**2 + 1)  # +1은 무한대 방지
-    
-    # 최대 밝기 제한
+    brightness = amp / (dist_obs_src**2 + 1)
     return min(brightness, 2.5)
 
 brightness = compute_brightness(observer_x, observer_y, source_x, source_y, lens_x, lens_y,
@@ -139,7 +151,7 @@ ax2.plot(np.degrees(angles), brightness_vals, color='orange', linewidth=2)
 ax2.axvline(t_deg, color='red', linestyle='--', label="현재 각도")
 ax2.set_xlabel("렌즈 각도 (도)")
 ax2.set_ylabel("측정 밝기")
-ax2.set_title("렌즈 각도에 따른 밝기 변화 (관측자 시선 기준)")
+ax2.set_title("렌즈 각도에 따른 밝기 변화 (광원 반대편 밝기 없음)")
 ax2.legend()
 ax2.grid(True)
 st.pyplot(fig2)
