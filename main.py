@@ -3,14 +3,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-st.set_page_config(page_title="중력 렌즈 시뮬레이터 (자동 공전 + 행성)", layout="wide")
-st.title("🔭 중력 렌즈 효과 시뮬레이터 (자동 공전 및 행성 포함)")
+st.set_page_config(page_title="중력 렌즈 시뮬레이터 (렌즈+행성 공전)", layout="wide")
+st.title("🔭 중력 렌즈 효과 시뮬레이터 (렌즈와 행성 공전)")
 
 # 사용자 입력
 has_planet = st.checkbox("렌즈에 행성 포함", value=False)
 lens_radius = st.slider("항성 렌즈 효과 반지름", 1.0, 10.0, 3.0, step=0.5)
 planet_radius = st.slider("행성 렌즈 효과 반지름", 1.0, 10.0, 3.0, step=0.5)
-planet_orbit_offset = st.slider("행성 위치 (렌즈 기준 x축 오프셋)", 1, 20, 5)
+planet_orbit_radius = st.slider("행성 공전 궤도 반경 (렌즈 기준)", 1, 20, 5)
 
 # 광원 위치 (원점)
 source_x, source_y = 0, 0
@@ -19,6 +19,9 @@ source_x, source_y = 0, 0
 orbit_radius = st.slider("렌즈 공전 궤도 반지름", 10, 50, 30)
 # 관측자 위치 (궤도 뒤, y축 음수 방향으로 충분히 멀리)
 observer_x, observer_y = 0, -orbit_radius - 20
+
+# 행성 공전 속도 비율 (렌즈 공전 속도의 몇 배)
+planet_orbit_speed_ratio = st.slider("행성 공전 속도 비율 (렌즈 대비)", 0.1, 5.0, 1.0, 0.1)
 
 auto_run = st.checkbox("자동 공전 시작", value=False)
 
@@ -80,9 +83,11 @@ while auto_run:
         lens_y = orbit_radius * np.sin(t)
 
         if has_planet:
-            # 행성은 렌즈 기준 x축 방향으로 행성 오프셋만큼 떨어져 있고, 렌즈와 동일한 각도로 공전
-            planet_x = lens_x + planet_orbit_offset * np.cos(t)
-            planet_y = lens_y + planet_orbit_offset * np.sin(t)
+            # 행성은 렌즈를 중심으로 planet_orbit_radius 만큼 떨어져서 공전
+            planet_angle = angle_deg * planet_orbit_speed_ratio
+            pt = np.radians(planet_angle)
+            planet_x = lens_x + planet_orbit_radius * np.cos(pt)
+            planet_y = lens_y + planet_orbit_radius * np.sin(pt)
         else:
             planet_x = None
             planet_y = None
@@ -93,16 +98,16 @@ while auto_run:
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14,6))
 
         # 위치도
-        ax1.set_title(f"렌즈 및 행성 공전 궤도 및 위치 (t={angle_deg}도)")
-        ax1.set_xlim(-orbit_radius - planet_orbit_offset - 30, orbit_radius + planet_orbit_offset + 30)
-        ax1.set_ylim(-orbit_radius - planet_orbit_offset - 40, orbit_radius + planet_orbit_offset + 30)
+        ax1.set_title(f"렌즈와 행성 공전 궤도 및 위치 (t={angle_deg}도)")
+        ax1.set_xlim(-orbit_radius - planet_orbit_radius - 30, orbit_radius + planet_orbit_radius + 30)
+        ax1.set_ylim(-orbit_radius - planet_orbit_radius - 40, orbit_radius + planet_orbit_radius + 30)
         ax1.set_aspect('equal')
         # 렌즈 공전 궤도
         circle = plt.Circle((0, 0), orbit_radius, color='gray', linestyle='dotted', fill=False)
         ax1.add_artist(circle)
-        # 행성 공전 궤도 (렌즈 기준, 렌즈 궤도 내에서 행성 움직임 궤도)
+        # 행성 공전 궤도 (렌즈 중심 원)
         if has_planet:
-            inner_circle = plt.Circle((0, 0), orbit_radius + planet_orbit_offset, color='gray', linestyle='dashdot', fill=False)
+            inner_circle = plt.Circle((lens_x, lens_y), planet_orbit_radius, color='gray', linestyle='dashdot', fill=False)
             ax1.add_artist(inner_circle)
 
         ax1.plot(source_x, source_y, 'yellow', marker='*', markersize=20, label="광원 (고정)")
@@ -120,8 +125,10 @@ while auto_run:
             lx = orbit_radius * np.cos(angle)
             ly = orbit_radius * np.sin(angle)
             if has_planet:
-                px = lx + planet_orbit_offset * np.cos(angle)
-                py = ly + planet_orbit_offset * np.sin(angle)
+                planet_angle = np.degrees(angle) * planet_orbit_speed_ratio
+                pt = np.radians(planet_angle)
+                px = lx + planet_orbit_radius * np.cos(pt)
+                py = ly + planet_orbit_radius * np.sin(pt)
             else:
                 px = None
                 py = None
