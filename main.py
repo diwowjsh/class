@@ -12,6 +12,9 @@ lens_radius = st.slider("항성 렌즈 효과 반지름", 1.0, 10.0, 3.0, step=0
 planet_radius = st.slider("행성 렌즈 효과 반지름", 1.0, 10.0, 3.0, step=0.5)
 planet_orbit_offset = 5  # 행성은 렌즈 기준 x축 방향으로 +5 떨어짐
 
+# 공전 속도 조절 (각도 증가량)
+orbit_speed = st.slider("공전 속도 (각도 증가량)", 1, 20, 3, step=1)
+
 # 광원 위치 (원점)
 source_x, source_y = 0, 0
 
@@ -128,6 +131,5 @@ while auto_run:
         st.pyplot(fig)
         st.write(f"현재 밝기: {brightness:.5f}")
 
-    angle_deg = (angle_deg + 3) % 360  # 각도 3도씩 증가
-    time.sleep(0.2)  # 0.2초 대기 후 다시 반복
-    # Streamlit rerun 방지용, 자동 종료하려면 체크박스 해제해야 함
+    angle_deg = (angle_deg + orbit_speed) % 360  # 각도 증가량 조절
+    time.sleep(0.2)
