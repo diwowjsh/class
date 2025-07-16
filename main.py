@@ -1,9 +1,10 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
-st.set_page_config(page_title="중력 렌즈 시뮬레이터 (수동 공전)", layout="wide")
-st.title("🔭 중력 렌즈 효과 시뮬레이터 (수동 공전 모드)")
+st.set_page_config(page_title="중력 렌즈 시뮬레이터 (자동 공전)", layout="wide")
+st.title("🔭 중력 렌즈 효과 시뮬레이터 (자동 공전 모드)")
 
 # 사용자 입력
 has_planet = st.checkbox("렌즈에 행성 포함", value=False)
@@ -11,18 +12,20 @@ lens_radius = st.slider("항성 렌즈 효과 반지름", 1.0, 10.0, 3.0, step=0
 planet_radius = st.slider("행성 렌즈 효과 반지름", 1.0, 10.0, 3.0, step=0.5)
 
 planet_orbit_radius = st.slider("행성 공전 궤도 반경 (렌즈 기준)", 1, 20, 5)
-planet_orbit_speed_ratio = st.slider("행성 공전 속도 비율 (렌즈 대비)", 0.1, 5.0, 1.0, 0.1)
+planet_orbit_speed_ratio = st.slider("행성 공전 속도 비율 (렌즈 대비)", 1.1, 10.0, 3.0, 0.1)  # 렌즈 공전 속도보다 빠르게
+
+# 공전 속도 조절 (각도 증가량)
+orbit_speed = st.slider("렌즈 공전 속도 (각도 증가량)", 1, 20, 3, step=1)
+
+# 광원 위치 (원점)
+source_x, source_y = 0, 0
 
 # 렌즈 궤도 반지름
 orbit_radius = st.slider("렌즈 공전 궤도 반지름", 10, 50, 30)
 # 관측자 위치 (궤도 뒤, y축 음수 방향으로 충분히 멀리)
 observer_x, observer_y = 0, -orbit_radius - 20
 
-# 광원 위치 (원점)
-source_x, source_y = 0, 0
-
-# 렌즈 공전 각도 (사용자가 조절)
-angle_deg = st.slider("렌즈 공전 각도 (도)", 0, 360, 0)
+auto_run = st.checkbox("자동 공전 시작", value=False)
 
 def distance(x1, y1, x2, y2):
     return np.sqrt((x1 - x2)**2 + (y1 - y2)**2)
@@ -71,70 +74,79 @@ def compute_brightness(observer_x, observer_y, source_x, source_y, lens_x, lens_
     brightness = amp / (dist_obs_src**2 + 1)
     return min(brightness, 2.5)
 
-# 렌즈 위치
-t = np.radians(angle_deg)
-lens_x = orbit_radius * np.cos(t)
-lens_y = orbit_radius * np.sin(t)
+placeholder = st.empty()
 
-if has_planet:
-    planet_angle = angle_deg * planet_orbit_speed_ratio
-    pt = np.radians(planet_angle)
-    planet_x = lens_x + planet_orbit_radius * np.cos(pt)
-    planet_y = lens_y + planet_orbit_radius * np.sin(pt)
-else:
-    planet_x = None
-    planet_y = None
+angle_deg = 0  # 초기 각도
 
-brightness = compute_brightness(observer_x, observer_y, source_x, source_y, lens_x, lens_y,
-                                planet_x, planet_y, lens_radius, planet_radius)
+while auto_run:
+    with placeholder.container():
+        t = np.radians(angle_deg)
+        lens_x = orbit_radius * np.cos(t)
+        lens_y = orbit_radius * np.sin(t)
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14,6))
+        if has_planet:
+            # 행성은 렌즈 위치를 중심으로 빠르게 공전
+            planet_angle = angle_deg * planet_orbit_speed_ratio
+            pt = np.radians(planet_angle)
+            planet_x = lens_x + planet_orbit_radius * np.cos(pt)
+            planet_y = lens_y + planet_orbit_radius * np.sin(pt)
+        else:
+            planet_x = None
+            planet_y = None
 
-# 위치도
-ax1.set_title(f"렌즈와 행성 공전 궤도 및 위치 (t={angle_deg}도)")
-ax1.set_xlim(-orbit_radius - planet_orbit_radius - 30, orbit_radius + planet_orbit_radius + 30)
-ax1.set_ylim(-orbit_radius - planet_orbit_radius - 40, orbit_radius + planet_orbit_radius + 30)
-ax1.set_aspect('equal')
-# 렌즈 궤도
-circle = plt.Circle((0, 0), orbit_radius, color='gray', linestyle='dotted', fill=False)
-ax1.add_artist(circle)
-# 행성 궤도
-if has_planet:
-    inner_circle = plt.Circle((lens_x, lens_y), planet_orbit_radius, color='gray', linestyle='dashdot', fill=False)
-    ax1.add_artist(inner_circle)
+        brightness = compute_brightness(observer_x, observer_y, source_x, source_y, lens_x, lens_y,
+                                        planet_x, planet_y, lens_radius, planet_radius)
 
-ax1.plot(source_x, source_y, 'yellow', marker='*', markersize=20, label="광원 (고정)")
-ax1.plot(lens_x, lens_y, 'black', marker='o', markersize=14, label="렌즈")
-if has_planet:
-    ax1.plot(planet_x, planet_y, 'blue', marker='o', markersize=10, label="행성")
-ax1.plot(observer_x, observer_y, 'green', marker='^', markersize=14, label="관측자 (고정)")
-ax1.legend(loc="upper right")
-ax1.grid(True)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14,6))
 
-# 밝기 곡선
-angles = np.linspace(0, 2 * np.pi, 360)
-brightness_vals = []
-for angle in angles:
-    lx = orbit_radius * np.cos(angle)
-    ly = orbit_radius * np.sin(angle)
-    if has_planet:
-        planet_angle = np.degrees(angle) * planet_orbit_speed_ratio
-        pt = np.radians(planet_angle)
-        px = lx + planet_orbit_radius * np.cos(pt)
-        py = ly + planet_orbit_radius * np.sin(pt)
-    else:
-        px = None
-        py = None
-    b = compute_brightness(observer_x, observer_y, source_x, source_y, lx, ly, px, py, lens_radius, planet_radius)
-    brightness_vals.append(b)
+        # 위치도
+        ax1.set_title(f"렌즈와 행성 공전 궤도 및 위치 (t={angle_deg}도)")
+        ax1.set_xlim(-orbit_radius - planet_orbit_radius - 30, orbit_radius + planet_orbit_radius + 30)
+        ax1.set_ylim(-orbit_radius - planet_orbit_radius - 40, orbit_radius + planet_orbit_radius + 30)
+        ax1.set_aspect('equal')
+        # 렌즈 궤도
+        circle = plt.Circle((0, 0), orbit_radius, color='gray', linestyle='dotted', fill=False)
+        ax1.add_artist(circle)
+        # 행성 궤도
+        if has_planet:
+            inner_circle = plt.Circle((lens_x, lens_y), planet_orbit_radius, color='gray', linestyle='dashdot', fill=False)
+            ax1.add_artist(inner_circle)
 
-ax2.plot(np.degrees(angles), brightness_vals, color='orange', linewidth=2)
-ax2.axvline(angle_deg, color='red', linestyle='--', label="현재 각도")
-ax2.set_xlabel("렌즈 각도 (도)")
-ax2.set_ylabel("측정 밝기")
-ax2.set_title("렌즈 각도에 따른 밝기 변화 (광원 반대편 밝기 없음)")
-ax2.legend()
-ax2.grid(True)
+        ax1.plot(source_x, source_y, 'yellow', marker='*', markersize=20, label="광원 (고정)")
+        ax1.plot(lens_x, lens_y, 'black', marker='o', markersize=14, label="렌즈")
+        if has_planet:
+            ax1.plot(planet_x, planet_y, 'blue', marker='o', markersize=10, label="행성")
+        ax1.plot(observer_x, observer_y, 'green', marker='^', markersize=14, label="관측자 (고정)")
+        ax1.legend(loc="upper right")
+        ax1.grid(True)
 
-st.pyplot(fig)
-st.write(f"현재 밝기: {brightness:.5f}")
+        # 밝기 곡선
+        angles = np.linspace(0, 2 * np.pi, 360)
+        brightness_vals = []
+        for angle in angles:
+            lx = orbit_radius * np.cos(angle)
+            ly = orbit_radius * np.sin(angle)
+            if has_planet:
+                planet_angle = np.degrees(angle) * planet_orbit_speed_ratio
+                pt = np.radians(planet_angle)
+                px = lx + planet_orbit_radius * np.cos(pt)
+                py = ly + planet_orbit_radius * np.sin(pt)
+            else:
+                px = None
+                py = None
+            b = compute_brightness(observer_x, observer_y, source_x, source_y, lx, ly, px, py, lens_radius, planet_radius)
+            brightness_vals.append(b)
+
+        ax2.plot(np.degrees(angles), brightness_vals, color='orange', linewidth=2)
+        ax2.axvline(angle_deg, color='red', linestyle='--', label="현재 각도")
+        ax2.set_xlabel("렌즈 각도 (도)")
+        ax2.set_ylabel("측정 밝기")
+        ax2.set_title("렌즈 각도에 따른 밝기 변화 (광원 반대편 밝기 없음)")
+        ax2.legend()
+        ax2.grid(True)
+
+        st.pyplot(fig)
+        st.write(f"현재 밝기: {brightness:.5f}")
+
+    angle_deg = (angle_deg + orbit_speed) % 360  # 각도 증가량 조절
+    time.sleep(0.2)
