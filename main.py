@@ -1,10 +1,21 @@
 import streamlit as st
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 
 st.set_page_config(page_title="중력 렌즈 시뮬레이터", layout="centered")
 st.title("🔭 중력 렌즈 효과 시뮬레이터 (광원 위치 조절 + 렌즈/행성 시간 이동)")
+
+# 슬라이더 크기 조절 CSS
+st.markdown(
+    """
+    <style>
+    div[data-baseweb="slider"] {
+        max-width: 300px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 # 유저 입력: 광원 위치, 렌즈/행성 반지름, 행성 포함 여부
 source_x = st.slider("광원 위치 (x축)", -50, 50, -30, step=1)
@@ -18,7 +29,7 @@ observer_x = 0  # 관측자 고정 위치
 # 애니메이션 시간 변수 (t)
 t = st.slider("시간 (t)", 0, 628, 0)  # 0 ~ 2π*100 (100단위 정밀도)
 
-# 렌즈와 행성 위치를 시간에 따라 결정 (sin, cos 함수로 움직임)
+# 렌즈와 행성 위치를 시간에 따라 결정 (sin 함수로 움직임)
 lens_x = 30 * np.sin(t / 100)
 planet_x = lens_x + planet_offset if has_planet else None
 
